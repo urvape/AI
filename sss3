@@ -1,0 +1,108 @@
+local Funcs = {}
+
+Funcs.VisualizePosition = function(Position)
+	local Part = Instance.new("Part")
+	Part.Position = Position
+	Part.CanCollide = false
+	Part.Parent = workspace.Filter
+	Part.Size = Vector3.new(0.1,0.1,0.1)
+	Part.Anchored = true
+end
+
+Funcs.GetDist = function(Model, Position)
+	return (Model["Right Arm"].Position - Position).Magnitude
+end
+
+
+Funcs.GetClosestEnemy = function(Model)
+	local ClosestEnemy = nil
+	local ClosestDistance = math.huge
+	for i, v in pairs(workspace.ActivePlayers:GetChildren()) do 
+		if v ~= Model then
+			local Dist = (v.PrimaryPart.Position - Model.PrimaryPart.Position).Magnitude
+			if Dist < ClosestDistance then
+				ClosestDistance = Dist
+				ClosestEnemy = v
+			end
+		end
+	end
+	
+	return ClosestEnemy
+end
+
+Funcs.GetDistance = function (Model, OtherModel)
+	return (Model.PrimaryPart.Position - OtherModel.PrimaryPart.Position).Magnitude
+end
+
+Funcs.GetClosestPart = function(Position, OtherModel)
+	local ClosestPart = nil
+	local ClosestDistance = math.huge
+	for i,v in pairs(OtherModel:GetChildren()) do 
+		if v:IsA("BasePart") then 
+			local Offset = Vector3.new(0,0,0)
+			if v.Name == "Right Arm" then 
+				
+				Offset = OtherModel.PrimaryPart.CFrame.LookVector*3
+			end
+			
+			local Dist = (Position - (v.Position+Offset)).Magnitude
+			if Dist < ClosestDistance then
+				ClosestDistance = Dist
+				ClosestPart = v
+			end
+		end
+	end
+	 
+	return ClosestPart
+end
+
+Funcs.GetRetreatDirection = function(Model, ClosestEnemy, Dist)
+	local Difference = (Model.PrimaryPart.Position - ClosestEnemy.PrimaryPart.Position)
+	local Params = RaycastParams.new()
+	Params.FilterType = Enum.RaycastFilterType.Blacklist
+	Params.FilterDescendantsInstances = {workspace.ActivePlayers}
+	-- must be 10 for now otherwise it might run towards the player
+	-- maybe increase to 100 when the closest hit is <10? that way it knows when it's getting cornered
+	--local Dist = 10 
+	local Angle = -135
+	local BestDist = 0
+	local BestPosition = nil
+	local Raycasts = 10
+	for i = 1, Raycasts do
+		local Raycast = workspace:Raycast(Model.PrimaryPart.Position, (CFrame.lookAt(Model.PrimaryPart.Position, Model.PrimaryPart.Position + Difference)*CFrame.Angles(0,math.rad(Angle),0)).LookVector*Dist, Params)
+		
+		if Raycast then 
+			local Dist = (Raycast.Position - ClosestEnemy.PrimaryPart.Position).Magnitude
+			if Dist > BestDist then 
+				BestPosition = Raycast.Position
+				BestDist = Dist
+			end
+		end
+		
+		Angle += 270/Raycasts
+		
+	end
+	
+	return BestPosition
+end
+
+Funcs.SideCast = function(ClosestEnemy)
+	local Params = RaycastParams.new()
+	Params.FilterType = Enum.RaycastFilterType.Blacklist
+	Params.FilterDescendantsInstances = {workspace.ActivePlayers}
+	local Angle = 0
+	local BestDist = 0
+	local BestPosition = nil
+	local Raycasts = 10
+	for i = 1,Raycasts do 
+		local Raycast = workspace:Raycast(ClosestEnemy.PrimaryPart.Position, (ClosestEnemy.PrimaryPart.CFrame * CFrame.Angles(0,math.rad(Angle),0)).LookVector*8, Params)
+		Angle += 360/Raycasts
+		if Raycast then 
+			return Raycast
+		end
+	end
+	
+
+end
+
+return Funcs
